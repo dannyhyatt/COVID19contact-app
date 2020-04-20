@@ -6,10 +6,13 @@ import 'session.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_scan_bluetooth/flutter_scan_bluetooth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:wakelock/wakelock.dart';
+//import 'package:beacon_broadcast/beacon_broadcast.dart';
+import 'package:flutter_blue/flutter_blue.dart';
+
+const COMMUNICATION_UUID = '0f3d3165-9567-4693-b5ec-7932d6e634a5';
 
 void main() => runApp(MyApp());
 
@@ -88,46 +91,41 @@ class _BroadcastPageState extends State<BroadcastPage> {
   bool _sendingData = false;
   String _error = '';
   Session currentSession;
-  FlutterScanBluetooth _bluetooth = FlutterScanBluetooth();
+//  BeaconBroadcast beaconBroadcast;
+  FlutterBlue flutterBlue;
 
   @override
   void initState() {
 
-    sharedPreferences.setString('my_id', '2');
-
     super.initState();
 
     currentSession = Session();
+//    beaconBroadcast = BeaconBroadcast();
+    flutterBlue = FlutterBlue.instance;
+    var subscription = flutterBlue.scanResults;
 
-    _bluetooth.devices.listen((device) {
-      if(device.name.startsWith("COVID19-"))
-      setState(() {
-        currentSession.add('${device.name}'.split('-')[1]);
-      });
-    });
-    _bluetooth.scanStopped.listen((device) {
-      debugPrint('2: $_shouldStop && $_scanning');
-      if(!_shouldStop) {
-        tryBluetoothAgain();
-      } else {
-        setState(() {
-          _scanning = false;
-        });
+
+    subscription.listen((results) {
+      // do something with scan results
+      for (ScanResult r in results) {
+        debugPrint('${r.device.name} found! rssi: ${r.rssi}, localname: ${r.advertisementData.localName}');
       }
     });
   }
 
-  void tryBluetoothAgain() {
-    debugPrint('lol');
-    _bluetooth.startScan();
-  }
-
   void sendSession() async {
+
     setState(() {
       _sendingData = true;
     });
     try {
       await currentSession.send();
+      if(currentSession.deviceIds.length == 0) {
+        setState(() {
+          _error = '';
+          _sendingData = false;
+        });
+      }
       debugPrint('success');
       setState(() {
         _error = '';
@@ -196,13 +194,41 @@ class _BroadcastPageState extends State<BroadcastPage> {
                     if(_scanning) {
                       _shouldStop = true;
                       await Wakelock.disable();
-                      await _bluetooth.stopScan();
+                      await flutterBlue.stopScan();
+
+//                      await beaconBroadcast.stop();
                       _scanning = false;
                       sendSession();
                     }
                     else {
                       await Wakelock.enable();
-                      await _bluetooth.startScan(pairedDevices: false);
+                      await flutterBlue.startScan(
+                          withServices: [
+                            Guid(COMMUNICATION_UUID),
+                          ],
+                          timeout: Duration(seconds: 60)
+                      );
+
+                      var subscription = flutterBlue.scanResults.listen((results) {
+                        // do something with scan results
+                        for (ScanResult r in results) {
+                          print('${r.device.name} found! rssi: ${r.rssi}');
+                        }
+                      });
+
+//                      await beaconBroadcast
+//                          .setUUID('39ED98FF-2900-441A-802F-9C398FC199D2')
+//                          .setMajorId(1)
+//                          .setMinorId(100)
+//                          .setTransmissionPower(-59) //optional
+//                          .setIdentifier('COVID19-1')
+////                          .setIdentifier('com.example.myDeviceRegion') //iOS-only, optional
+////                          .setLayout('s:0-1=feaa,m:2-2=10,p:3-3:-41,i:4-21v') //Android-only, optional
+////                          .setManufacturerId(0x001D) //Android-only, optional
+//                          .start();
+//                      beaconBroadcast.getAdvertisingStateChange().listen((isAdvertising) {
+//                        debugPrint('is ADVERTISTING: $isAdvertising');
+//                      });
                       debugPrint("scanning started");
                       _shouldStop = false;
                       setState(() {

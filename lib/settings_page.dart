@@ -22,7 +22,7 @@ class SettingsPage extends StatelessWidget {
           child: ListView(
             shrinkWrap: true,
             children: <Widget>[
-              Text('Your phone should be named ${sharedPreferences.getString('my_id')}'),
+              Text('Your phone should be named COVID19-${sharedPreferences.getString('my_id')}'),
               RaisedButton(
                 child: Text('Report a positive COVID-19 diagnosis'),
                 onPressed: () {

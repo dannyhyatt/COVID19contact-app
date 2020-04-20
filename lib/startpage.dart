@@ -20,7 +20,7 @@ class _StartPageState extends State<StartPage> {
   void init() async {
     dio = Dio(
       BaseOptions(
-        baseUrl: 'https://testing.icanhelp.us:8080/',
+        baseUrl: 'HOSTING_URL',
         validateStatus: (_) => true
       ),
     );

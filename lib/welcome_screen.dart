@@ -20,6 +20,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   String str = '';
   
   void registerDevice() async {
+    if(sharedPreferences.getString('my_id') != null) {
+      setState(() {
+        stage += 2;
+      });
+    }
     setState(() {
       ++stage;
     });
@@ -135,7 +140,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         OutlineButton(
           child: Text('Start using COVID-19 Contact Tracker'),
           onPressed: () {
-            sharedPreferences.setString('my_id', str);
             sharedPreferences.setBool('first_run', true);
             Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => IndexPage()));
           },
